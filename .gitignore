@@ -1,0 +1,5 @@
+http/k8s
+.DS_Store
+http/keys/*.cnf
+http/keys/*.csr
+http/keys/*.pem
