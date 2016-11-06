@@ -3,3 +3,4 @@ http/k8s
 http/keys/*.cnf
 http/keys/*.csr
 http/keys/*.pem
+http/keys/*.srl

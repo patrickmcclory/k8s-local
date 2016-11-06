@@ -8,19 +8,18 @@ NUMBER_OF_HOSTS=7
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-sed "/DNSMASQ_OPTS=/c\DNSMASQ_OPTS=$DIR\/dnsmasq\/dnsmasq.conf" /etc/default/dnsmasq
+sudo sed -i "/DNSMASQ_OPTS=/c\DNSMASQ_OPTS=$DIR\/dnsmasq\/dnsmasq.conf" /etc/default/dnsmasq
 
 if [ -d /var/lib/tftpboot/pxelinux.cfg ];
 then
   sudo rm -rf /var/lib/tftpboot/pxelinux.cfg
+  echo "Removed old /var/lib/tftpboot/pxelinux.cfg"
 fi
 
-sudo mkdir -p /var/lib/tftpboot/pxelinux.cfg
-
 # setting up tftp boot folder
-sudo mkdir -p /var/lib/tftpboot/pxelinux.cfg
+sudo mkdir -p /var/lib/tftpboot/
 
-ln -s $(pwd)/tftpboot/pxelinux.cfg /var/lib/tftpboot/pxelinux
+ln -s $DIR/tftpboot/pxelinux.cfg /var/lib/tftpboot/
 
 echo ''
 echo 'Getting CoreOS files for alpha, beta and stable releases... just in case'
@@ -31,53 +30,82 @@ sudo mkdir -p /var/lib/tftpboot/coreos/beta
 sudo mkdir -p /var/lib/tftpboot/coreos/stable
 
 for releasename in alpha beta stable; do
+  echo "    Downloading $releasename files"
   sudo mkdir -p /var/lib/tftpboot/coreos/$releasename
-  curl -O /var/lib/tftpboot/coreos/$releasename/ https://$releasename.release.core-os.net/amd64-usr/current/coreos_production_pxe.vmlinuz
-  curl -O /var/lib/tftpboot/coreos/$releasename/ https://$releasename.release.core-os.net/amd64-usr/current/coreos_production_pxe_image.cpio.gz
+  sudo curl https://$releasename.release.core-os.net/amd64-usr/current/coreos_production_pxe.vmlinuz -o /var/lib/tftpboot/coreos/$releasename/coreos_production_pxe.vmlinuz
+  sudo curl https://$releasename.release.core-os.net/amd64-usr/current/coreos_production_pxe_image.cpio.gz -o /var/lib/tftpboot/coreos/$releasename/coreos_production_pxe_image.cpio.gz
 done
+
+sudo chmod -R 755 /var/lib/tftpboot/*
+
+echo ""
+echo "Done getting CoreOS files!"
 
 echo ''
 echo 'Getting core pxeboot files for pxeboot process'
 echo ''
 
-for filename in gpxelinux.0 ldlinux.c32 lpxelinux.0 memdisk menu.c32 pxelinux.0 do
-  rm -rf /var/lib/tftpboot/$filename
-  curl -O /var/lib/tftpboot/ http://www.mcclory.io/resources/pxeboot/$filename
+filelist=("gpxelinux.0" "ldlinux.c32" "lpxelinux.0" "memdisk" "menu.c32" "pxelinux.0")
+
+for filename in "${filelist[@]}"; do
+  sudo rm -rf /var/lib/tftpboot/$filename
+  sudo curl http://www.mcclory.io/resources/pxeboot/$filename -o /var/lib/tftpboot/$filename
 done
 
-# Set up nginx and configure for use
+sudo chmod -R 755 /var/lib/tftpboot/*
 
+
+# Set up nginx and configure for use
+echo ""
 if [ $(dpkg-query -W -f='${Status}' nginx 2>/dev/null | grep -c "ok installed") -eq 0 ];
 then
+  echo "  Installing Nginx"
   sudo apt-get install -y nginx;
+else
+  echo "  Nginx is already installed."
 fi
 
 if [ -f /etc/nginx/sites-enabled/default ];
 then
-  rm -rf /etc/nginx/sites-enabled/default
+  sudo rm -rf /etc/nginx/sites-enabled/default
+  echo "  Removed default nginx from sites-enabled"
 fi
 
-cat << /etc/nginx/sites-availale/pxeboot.conf >> EOF
+echo ""
+echo "  Writing nginx config file."
+
+cat >> /tmp/pxeboot.conf << EOF
 server {
 	listen 80 default_server;
 	listen [::]:80 default_server;
   root $DIR/http;
   server_name _;
   location / {
-    try_files $uri $uri/ =404;
+    try_files \$uri \$uri/ =404;
   }
+}
 
 EOF
 
+sudo mv /tmp/pxeboot.conf /etc/nginx/sites-available/pxeboot.conf
+sudo ln -s /etc/nginx/sites-available/pxeboot.conf /etc/nginx/sites-enabled/pxeboot.conf
+sudo service nginx restart
+
+echo ""
+echo "Downloading k8s"
+
 # Download k8s files
 sudo mkdir -p $DIR/http/k8s/1.4.5
-curl -L https://github.com/kubernetes/kubernetes/releases/download/v1.4.5/kubernetes.tar.gz -O /tmp/kuberntes.tar.gz
+curl -L https://github.com/kubernetes/kubernetes/releases/download/v1.4.5/kubernetes.tar.gz -o /tmp/kuberntes.tar.gz
 cd /tmp
 tar xvf /tmp/kuberntes.tar.gz
-mv /tmp/kubernetes/server/kubernetes-server-linux-amd64.tar.gz $DIR/http/k8s/1.4.5/
+sudo mv /tmp/kubernetes/server/kubernetes-server-linux-amd64.tar.gz $DIR/http/k8s/1.4.5/
 rm -rf /tmp/kubernetes
 rm -rf /tmp/kubernetes.tar.gz
 
+echo ""
+echo "Done Downloading k8s"
+echo ""
 
 # Create us some keys!
 # Basically following steps here: https://coreos.com/kubernetes/docs/latest/openssl.html
@@ -88,14 +116,14 @@ echo ""
 echo "Creating Clicster Root CA"
 echo ""
 
-openssl genrsa -out ca-key.pem 2048
-openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca"
+sudo openssl genrsa -out ca-key.pem 2048
+sudo openssl req -x509 -new -nodes -key ca-key.pem -days 10000 -out ca.pem -subj "/CN=kube-ca"
 
 echo ""
 echo "Creating API Server Keypair"
 echo ""
 
-cat >> api-openssl.cnf << EOF
+cat >> /tmp/api-openssl.cnf << EOF
 [req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
@@ -115,15 +143,17 @@ IP.2 = ${MASTER_HOST}
 
 EOF
 
-openssl genrsa -out apiserver-key.pem 2048
-openssl req -new -key apiserver-key.pem -out apiserver.csr -subj "/CN=kube-apiserver" -config api-openssl.cnf
-openssl x509 -req -in apiserver.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out apiserver.pem -days 10000 -extensions v3_req -extfile api-openssl.cnf
+sudo mv /tmp/api-openssl.cnf $DIR/http/keys/api-openssl.cnf
+
+sudo openssl genrsa -out apiserver-key.pem 2048
+sudo openssl req -new -key apiserver-key.pem -out apiserver.csr -subj "/CN=kube-apiserver" -config api-openssl.cnf
+sudo openssl x509 -req -in apiserver.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out apiserver.pem -days 10000 -extensions v3_req -extfile api-openssl.cnf
 
 echo ""
 echo "Creating Worker Keypairs"
 echo ""
 
-cat >> worker-openssl.cnf << EOF
+cat >> /tmp/worker-openssl.cnf << EOF
 [req]
 req_extensions = v3_req
 distinguished_name = req_distinguished_name
@@ -137,6 +167,8 @@ IP.1 = \$ENV::WORKER_IP
 
 EOF
 
+sudo mv /tmp/worker-openssl.cnf $DIR/http/keys/worker-openssl.cnf
+
 for (( i=1; i<=$NUMBER_OF_HOSTS; i++ ))
 do
 
@@ -149,9 +181,9 @@ echo "FQDN: "$WORKER_FQDN
 echo "IP:   "$WORKER_IP
 echo ""
 
-openssl genrsa -out ${WORKER_FQDN}-worker-key.pem 2048
-WORKER_IP=${WORKER_IP} openssl req -new -key ${WORKER_FQDN}-worker-key.pem -out ${WORKER_FQDN}-worker.csr -subj "/CN=${WORKER_FQDN}" -config worker-openssl.cnf
-WORKER_IP=${WORKER_IP} openssl x509 -req -in ${WORKER_FQDN}-worker.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${WORKER_FQDN}-worker.pem -days 10000 -extensions v3_req -extfile worker-openssl.cnf
+sudo openssl genrsa -out ${WORKER_FQDN}-worker-key.pem 2048
+sudo WORKER_IP=${WORKER_IP} openssl req -new -key ${WORKER_FQDN}-worker-key.pem -out ${WORKER_FQDN}-worker.csr -subj "/CN=${WORKER_FQDN}" -config worker-openssl.cnf
+sudo WORKER_IP=${WORKER_IP} openssl x509 -req -in ${WORKER_FQDN}-worker.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out ${WORKER_FQDN}-worker.pem -days 10000 -extensions v3_req -extfile worker-openssl.cnf
 
 echo ""
 echo "done!"

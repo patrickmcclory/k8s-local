@@ -1,0 +1,11 @@
+default coreos
+prompt 1
+timeout 15
+
+MENU TITLE mcclory.io pxeboot setup
+
+label coreos
+  MENU DEFAULT LABEL Install CoreOS
+  KERNEL /coreos/beta/coreos_production_pxe.vmlinuz
+  INITRD /coreos/beta/coreos_production_pxe_image.cpio.gz
+  APPEND coreos.config.url=http://172.16.16.3/coreos/default-cloud-config.ml
