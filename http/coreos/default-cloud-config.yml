@@ -41,6 +41,7 @@ write_files:
       restrict 127.0.0.1
 coreos:
   etcd2:
+    name: dev-01
     initial-cluster: dev-01=http://172.16.16.10:2380 #,dev-02=http://172.16.16.20:2380,dev-03=http://172.16.16.30:2380,dev-04=http://172.16.16.40:2380,dev-05=http://172.16.16.50:2380,dev-06=http://172.16.16.60:2380,dev-07=http://172.16.16.70:2380
     initial-cluster-state: new
     advertise-client-urls: http://172.16.16.10:2379,http://172.16.16.10:4001

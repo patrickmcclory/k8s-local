@@ -244,13 +244,6 @@ coreos:
     - name: rpc-statd.service
       command: start
       enable: true
-    - name: mnt-kubernetes.mount
-      command: start
-      content: |
-        [Mount]
-        What=172.16.16.9:/kubernetes
-        Where=/mnt/kubernetes
-        Type=nfs
     - name: download-release.service
       command: start
       content: |
