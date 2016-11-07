@@ -53,12 +53,6 @@ coreos:
   fleet:
     metadata: kubernetes_role=minion
   units:
-    - name: systemd-timesyncd.service
-      command: stop
-      mask: true
-    - name: ntpd.service
-      command: start
-      enable: true
     - name: etcd2.service
       command: start
     - name: fleet.service
