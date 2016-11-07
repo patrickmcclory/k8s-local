@@ -75,14 +75,6 @@ coreos:
             Wants=network-online.target
             [Service]
             ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network": "10.2.0.0/16", "Backend": {"Type": "vxlan"}}'
-    - name: kubelet.service
-      command: start
-      drop-ins:
-        - name: 99-kubelet-wait.conf
-          content: |
-            [Unit]
-            Requires=flanneld.service
-            After=flanneld.service
     - name: rpc-statd.service
       command: start
       enable: true
@@ -96,7 +88,7 @@ coreos:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
-        ExecStart=/usr/bin/curl http://172.16.16.10/k8s/1.4.5/kubernetes-server-linux-amd64.tar.gz -o /tmp/kubernetes-server.tar.gz
+        ExecStart=/usr/bin/curl http://172.16.16.3/k8s/1.4.5/kubernetes-server-linux-amd64.tar.gz -o /tmp/kubernetes-server.tar.gz
         ExecStart=/usr/bin/tar xf /tmp/kubernetes-server.tar.gz -C /opt
         ExecStart=/usr/bin/rm -rf /tmp/kubernetes-server.tar.gz
     - name: copy-serviceaccount-key.service
@@ -108,9 +100,9 @@ coreos:
         Requires=mnt-kubernetes.mount
         [Service]
         ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
-        ExecStart=/usr/bin/wget http://172.16.16.10/keys/ca.pem
-        ExecStart=/usr/bin/wget http://172.16.16.10/keys/apiserver.pem
-        ExecStart=/usr/bin/wget http://172.16.16.10/keys/apiserver-key.pem
+        ExecStart=/usr/bin/wget http://172.16.16.3/keys/ca.pem
+        ExecStart=/usr/bin/wget http://172.16.16.3/keys/apiserver.pem
+        ExecStart=/usr/bin/wget http://172.16.16.3/keys/apiserver-key.pem
         ExecStart=/usr/bin/chmod 600 /etc/kubernetes/ssl/apiserver-key.pem
         ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/apiserver-key.pem
         RemainAfterExit=yes
