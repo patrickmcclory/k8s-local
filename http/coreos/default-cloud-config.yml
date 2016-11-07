@@ -63,18 +63,6 @@ coreos:
       command: start
     - name: fleet.service
       command: start
-    - name: flanneld.service
-      command: start
-      drop-ins:
-        - name: 00-network-config.conf
-          content: |
-            [Unit]
-            Requires=etcd2.service
-            After=etcd2.service
-            Requires=network-online.target
-            Wants=network-online.target
-            [Service]
-            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network": "10.2.0.0/16", "Backend": {"Type": "vxlan"}}'
     - name: rpc-statd.service
       command: start
       enable: true
