@@ -6,4 +6,4 @@ label coreos
   MENU DEFAULT LABEL Install CoreOS
   KERNEL /coreos/beta/coreos_production_pxe.vmlinuz
   INITRD /coreos/beta/coreos_production_pxe_image.cpio.gz
-  APPEND cloud_config_url=http://172.16.16.3/coreos/master-cloud-config.yml
+  APPEND cloud-config-url=http://172.16.16.3/coreos/master-cloud-config.yml
