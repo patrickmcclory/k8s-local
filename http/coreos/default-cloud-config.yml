@@ -1,0 +1,163 @@
+#cloud-config
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDvaKhzN7tqXdATJqpCqtk0T77ResjteJFldyerpTNJg3BBiYLrSki0rJJN50pIDTclciEWXRsUKBVrXu7b0NW+oP2LsQsQ0jodtvuxk/HQLUhVOVrf46E//oXI+66mg/Nkw0ZcGmZodXAZ73ec3YwJxBnMupBnu2gDVpIQtMRYZs49IVaQfPatzvhk2dwPIvNGoz+F+Bys3swdlc//sXpI+rYf03TsGoTQFb1AXyLx9Sn56ap4I5DHT5lkeegTJOMPA/E8VOo2eOHla95iY9gejG/v4BZgWyVRNOUw+JRgwGfLxuHVoouW3wQnXhI4MhuV3iluSyujPU2TubIYQSTR patrick@pmdev-mac
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQC8pqB/t7rqa7gHeUlpqjklsmbU23gvhmsVbmcUVn6na+i8VJkEnT0+P93iZj5u1+X+a2rdBIyZXTM2aFZ57VcM72E+8fUr3/uiZtoBFJIpvyJsWfYGPRtbsDy/3yEq5k27h5js6SRum3rfaw4+HMF6KU1O9MeZXC2iAy4N0xGvCJKYsBczNF52Y51mljZ30rs79ew4r3AFjdbVFhkKgIapV3y1pEYuXYZMpuHuJ/lZTtbnjTLftmvOqZO6mn2BOu2pOtVaDld3345OC0GU2EhNjiPjBiR2A7uFDzaQKs3HS9UCvNtWoZfEjSRb+/+Muw9Vq8HFx/ydzRTUlINUgwDJ drock@carbon13
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQCo9pcKPFvyn0RBosH7t4rVRZtSPrt5RjxV6xDGPJj4bLGcKQS021fcx38A5eJpH7E00K1m/5rDXdi5uleUSJEiWPe+NvGZqGntSH1I8DD4P7A0MtD/v6up8TMIEPwFCg+/WPahdrxxWrTOKFr/B/I+25QYCGBqeolvGCYAdlzvp+/AANtCuTgnfB0DaS2rVBs3pD4CYmPmg5vO9/D5CKROdXz25E3Ba49SIOQDbA00ty7+VcalJGddCkTAA7YfW8/ZHVD6U9wC/DLlfXJ+hnjCdkU6qYskpij4++/WkoVolz8SflamDfhhHhU3Og+bV/ueqlX8Ax3PsnN4iyLzn8+n pmdev@network-services.introspectdata.local
+write_files:
+  - path: /etc/systemd/system/kubelet.service
+    permissions: 0644
+    owner: root
+    content: |
+      [Service]
+      ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
+      ExecStartPre=/usr/bin/mkdir -p /var/log/containers
+
+      Environment=KUBELET_VERSION=v1.4.5_coreos.0
+      Environment="RKT_OPTS=--volume var-log,kind=host,source=/var/log \
+        --mount volume=var-log,target=/var/log \
+        --volume dns,kind=host,source=/etc/resolv.conf \
+        --mount volume=dns,target=/etc/resolv.conf"
+
+      ExecStart=/usr/lib/coreos/kubelet-wrapper \
+        --api-servers=http://127.0.0.1:8080 \
+        --network-plugin-dir=/etc/kubernetes/cni/net.d  \
+        --register-schedulable=false \
+        --allow-privileged=true \
+        --config=/etc/kubernetes/manifests \
+        --hostname-override=172.16.16.10 \
+        --cluster-dns=10.3.0.2 \
+        --cluster-domain=cluster.introspectdata.dev
+      Restart=always
+      RestartSec=10
+      [Install]
+      WantedBy=multi-user.target
+  - path: /etc/ntp.conf
+    permissions: 0644
+    owner: root
+    content: |
+      server 172.16.16.1
+
+      restrict default nomodify nopeer noquery limited kod
+      restrict 127.0.0.1
+coreos:
+  etcd2:
+    initial-cluster: dev-01=http://172.16.16.10:2380 #,dev-02=http://172.16.16.20:2380,dev-03=http://172.16.16.30:2380,dev-04=http://172.16.16.40:2380,dev-05=http://172.16.16.50:2380,dev-06=http://172.16.16.60:2380,dev-07=http://172.16.16.70:2380
+    initial-cluster-state: new
+    advertise-client-urls: http://172.16.16.10:2379,http://172.16.16.10:4001
+    initial-advertise-peer-urls: http://172.16.16.10:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://172.16.16.10:2380,http://172.16.16.10:7001
+  update:
+    reboot-strategy: off
+  fleet:
+    metadata: kubernetes_role=minion
+  units:
+    - name: systemd-timesyncd.service
+      command: stop
+      mask: true
+    - name: ntpd.service
+      command: start
+      enable: true
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start
+    - name: flanneld.service
+      command: start
+      drop-ins:
+        - name: 00-network-config.conf
+          content: |
+            [Unit]
+            Requires=etcd2.service
+            After=etcd2.service
+            Requires=network-online.target
+            Wants=network-online.target
+            [Service]
+            ExecStartPre=/usr/bin/etcdctl set /coreos.com/network/config '{ "Network": "10.2.0.0/16", "Backend": {"Type": "vxlan"}}'
+    - name: kubelet.service
+      command: start
+      drop-ins:
+        - name: 99-kubelet-wait.conf
+          content: |
+            [Unit]
+            Requires=flanneld.service
+            After=flanneld.service
+    - name: rpc-statd.service
+      command: start
+      enable: true
+    - name: download-release.service
+      command: start
+      content: |
+        [Unit]
+        Description=Downloads Kubernetes Release
+          After=mnt-kubernetes.mount
+          Requires=mnt-kubernetes.mount
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/curl http://172.16.16.10/k8s/1.4.5/kubernetes-server-linux-amd64.tar.gz -o /tmp/kubernetes-server.tar.gz
+        ExecStart=/usr/bin/tar xf /tmp/kubernetes-server.tar.gz -C /opt
+        ExecStart=/usr/bin/rm -rf /tmp/kubernetes-server.tar.gz
+    - name: copy-serviceaccount-key.service
+      command: start
+      content: |
+        [Unit]
+        Description=Gather k8s keys
+        After=mnt-kubernetes.mount
+        Requires=mnt-kubernetes.mount
+        [Service]
+        ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
+        ExecStart=/usr/bin/wget http://172.16.16.10/keys/ca.pem
+        ExecStart=/usr/bin/wget http://172.16.16.10/keys/apiserver.pem
+        ExecStart=/usr/bin/wget http://172.16.16.10/keys/apiserver-key.pem
+        ExecStart=/usr/bin/chmod 600 /etc/kubernetes/ssl/apiserver-key.pem
+        ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/apiserver-key.pem
+        RemainAfterExit=yes
+        Type=oneshot
+    - name: format-ephemeral.service
+      command: start
+      content: |
+        [Unit]
+        Description=Formats the ephemeral drive
+        After=dev-sda.device
+        Requires=dev-sda.device
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/sbin/wipefs -a /dev/sda
+        ExecStart=/usr/sbin/mkfs.ext4 -F /dev/sda
+    - name: var-lib-docker.mount
+      command: start
+      content: |
+        [Unit]
+        Description=Mount ephemeral to /var/lib/docker
+        Requires=format-ephemeral.service
+        After=format-ephemeral.service
+        [Mount]
+        What=/dev/sda
+        Where=/var/lib/docker
+        Type=ext4
+    - name: docker.service
+      command: start
+      content: |
+        [Unit]
+        Description=Docker Application Container Engine
+        Documentation=http://docs.docker.com
+        After=docker.socket early-docker.target network.target var-lib-docker.mount flanneld.service
+        Requires=docker.socket early-docker.target var-lib-docker.mount flanneld.service
+
+        [Service]
+        Type=notify
+        EnvironmentFile=-/run/flannel_docker_opts.env
+        MountFlags=slave
+        ExecStart=/usr/lib/coreos/dockerd --host=fd:// $DOCKER_OPTS $DOCKER_CGROUPS $DOCKER_OPT_BIP $DOCKER_OPT_MTU $DOCKER_OPT_IPMASQ
+        ExecReload=/bin/kill -s HUP $MAINPID
+        LimitNOFILE=1048576
+        LimitNPROC=infinity
+        LimitCORE=infinity
+        TasksMax=infinity
+        TimeoutStartSec=0
+        Delegate=yes
+
+        [Install]
+        WantedBy=multi-user.target
