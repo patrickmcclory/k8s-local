@@ -8,7 +8,24 @@ NUMBER_OF_HOSTS=7
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-sudo sed -i "/DNSMASQ_OPTS=/c\DNSMASQ_OPTS=$DIR\/dnsmasq\/dnsmasq.conf" /etc/default/dnsmasq
+echo ""
+echo "Set up dnsmasq and configure for use"
+echo ""
+if [ $(dpkg-query -W -f='${Status}' nginx 2>/dev/null | grep -c "ok installed") -eq 0 ];
+then
+  echo "  Installing DNSMASQ"
+  sudo apt-get install -y nginx;
+else
+  echo "  DNSMASQ is already installed."
+fi
+
+sudo sed -i "/DNSMASQ_OPTS=/c\DNSMASQ_OPTS=--conf-file=$DIR\/dnsmasq\/dnsmasq.conf" /etc/default/dnsmasq
+
+echo "  DNSMASQ reconfigured"
+
+sudo service dnsmasq restart
+echo ""
+
 
 if [ -d /var/lib/tftpboot/pxelinux.cfg ];
 then
