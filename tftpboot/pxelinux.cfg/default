@@ -2,8 +2,6 @@ default coreos
 prompt 1
 timeout 15
 
-MENU TITLE mcclory.io pxeboot setup
-
 label coreos
   MENU DEFAULT LABEL Install CoreOS
   KERNEL /coreos/beta/coreos_production_pxe.vmlinuz
