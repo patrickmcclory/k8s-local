@@ -36,8 +36,6 @@ fi
 # setting up tftp boot folder
 sudo mkdir -p /var/lib/tftpboot/
 
-ln -s $DIR/tftpboot/pxelinux.cfg /var/lib/tftpboot/
-
 echo ''
 echo 'Getting CoreOS files for alpha, beta and stable releases... just in case'
 echo ''
@@ -68,6 +66,12 @@ for filename in "${filelist[@]}"; do
   sudo rm -rf /var/lib/tftpboot/$filename
   sudo curl http://www.mcclory.io/resources/pxeboot/$filename -o /var/lib/tftpboot/$filename
 done
+
+echo ''
+echo 'Symlinking pxelinux.cfg from repository'
+echo ''
+
+sudo ln -s $DIR/tftpboot/pxelinux.cfg /var/lib/tftpboot/
 
 sudo chmod -R 755 /var/lib/tftpboot/*
 
@@ -117,8 +121,8 @@ curl -L https://github.com/kubernetes/kubernetes/releases/download/v1.4.5/kubern
 cd /tmp
 tar xvf /tmp/kuberntes.tar.gz
 sudo mv /tmp/kubernetes/server/kubernetes-server-linux-amd64.tar.gz $DIR/http/k8s/1.4.5/
-rm -rf /tmp/kubernetes
-rm -rf /tmp/kubernetes.tar.gz
+sudo rm -rf /tmp/kubernetes
+sudo rm -rf /tmp/kubernetes.tar.gz
 
 echo ""
 echo "Done Downloading k8s"
