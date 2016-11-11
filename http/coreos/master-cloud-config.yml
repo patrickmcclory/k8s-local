@@ -1,0 +1,72 @@
+#cloud-config
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDvaKhzN7tqXdATJqpCqtk0T77ResjteJFldyerpTNJg3BBiYLrSki0rJJN50pIDTclciEWXRsUKBVrXu7b0NW+oP2LsQsQ0jodtvuxk/HQLUhVOVrf46E//oXI+66mg/Nkw0ZcGmZodXAZ73ec3YwJxBnMupBnu2gDVpIQtMRYZs49IVaQfPatzvhk2dwPIvNGoz+F+Bys3swdlc//sXpI+rYf03TsGoTQFb1AXyLx9Sn56ap4I5DHT5lkeegTJOMPA/E8VOo2eOHla95iY9gejG/v4BZgWyVRNOUw+JRgwGfLxuHVoouW3wQnXhI4MhuV3iluSyujPU2TubIYQSTR patrick@pmdev-mac
+coreos:
+  etcd2:
+    name: dev-01
+    initial-cluster: dev-01=http://172.16.16.10:2380 #,dev-02=http://172.16.16.20:2380,dev-03=http://172.16.16.30:2380,dev-04=http://172.16.16.40:2380,dev-05=http://172.16.16.50:2380,dev-06=http://172.16.16.60:2380,dev-07=http://172.16.16.70:2380
+    initial-cluster-state: new
+    advertise-client-urls: http://172.16.16.10:2379,http://172.16.16.10:4001
+    initial-advertise-peer-urls: http://172.16.16.10:2380
+    listen-client-urls: http://0.0.0.0:2379,http://0.0.0.0:4001
+    listen-peer-urls: http://172.16.16.10:2380,http://172.16.16.10:7001
+  update:
+    reboot-strategy: off
+  fleet:
+    metadata: kubernetes_role=master
+  units:
+    - name: download-release.service
+      command: start
+      content: |
+        [Unit]
+        Description=Downloads Kubernetes Release
+        After=mnt-kubernetes.mount
+        Requires=mnt-kubernetes.mount
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/mkdir -p /opt/bin
+        ExecStart=/usr/bin/tar xf /mnt/kubernetes/1.4.5/kubernetes-server-linux-amd64.tar.gz -C /opt
+    - name: copy-serviceaccount-key.service
+      command: start
+      content: |
+        [Unit]
+        Description=Gather k8s keys
+        After=mnt-kubernetes.mount
+        Requires=mnt-kubernetes.mount
+        [Service]
+        ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
+        ExecStart=/usr/bin/cp /mnt/kubernetes/keys/root-ca/ca.pem /etc/kubernetes/ssl/
+        ExecStart=/usr/bin/cp /mnt/kubernetes/keys/k8s-api/apiserver.pem /etc/kubernetes/ssl/
+        ExecStart=/usr/bin/cp /mnt/kubernetes/keys/k8s-api/apiserver-key.pem /etc/kubernetes/ssl/
+        ExecStart=/usr/bin/chmod 600 /etc/kubernetes/ssl/apiserver-key.pem
+        ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/apiserver-key.pem
+        RemainAfterExit=yes
+        Type=oneshot
+    - name: format-ephemeral.service
+      command: start
+      content: |
+        [Unit]
+        Description=Formats the ephemeral drive
+        After=dev-sda.device
+        Requires=dev-sda.device
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/sbin/wipefs -a /dev/sda
+        ExecStart=/usr/sbin/mkfs.ext4 -F /dev/sda
+    - name: var-lib-docker.mount
+      command: start
+      content: |
+        [Unit]
+        Description=Mount ephemeral to /var/lib/docker
+        Requires=format-ephemeral.service
+        After=format-ephemeral.service
+        [Mount]
+        What=/dev/sda
+        Where=/var/lib/docker
+        Type=ext4
+    - name: etcd2.service
+      command: start
+    - name: fleet.service
+      command: start
