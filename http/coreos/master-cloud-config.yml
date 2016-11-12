@@ -26,14 +26,14 @@ coreos:
         Type=oneshot
         RemainAfterExit=yes
         ExecStart=/usr/bin/mkdir -p /opt/bin
-        ExecStart=/usr/bin/tar xf /mnt/kubernetes/1.4.5/kubernetes-server-linux-amd64.tar.gz -C /opt
+        ExecStart=/usr/bin/curl http://172.16.16.3/k8s/1.4.5/kubernetes-server-linux-amd64.tar.gz -o /tmp/kubernetes.tar.gz
+        ExecStart=/usr/bin/tar xvf /tmp/kubernetes.tar.gz -C /opt
+        ExecStart=/usr/bin/rm -rf  /tmp/kubernetes.tar.gz
     - name: copy-serviceaccount-key.service
       command: start
       content: |
         [Unit]
         Description=Gather k8s keys
-        After=mnt-kubernetes.mount
-        Requires=mnt-kubernetes.mount
         [Service]
         ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
         ExecStart=/usr/bin/cp /mnt/kubernetes/keys/root-ca/ca.pem /etc/kubernetes/ssl/
@@ -43,29 +43,6 @@ coreos:
         ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/apiserver-key.pem
         RemainAfterExit=yes
         Type=oneshot
-    - name: format-ephemeral.service
-      command: start
-      content: |
-        [Unit]
-        Description=Formats the ephemeral drive
-        After=dev-sda.device
-        Requires=dev-sda.device
-        [Service]
-        Type=oneshot
-        RemainAfterExit=yes
-        ExecStart=/usr/sbin/wipefs -a /dev/sda
-        ExecStart=/usr/sbin/mkfs.ext4 -F /dev/sda
-    - name: var-lib-docker.mount
-      command: start
-      content: |
-        [Unit]
-        Description=Mount ephemeral to /var/lib/docker
-        Requires=format-ephemeral.service
-        After=format-ephemeral.service
-        [Mount]
-        What=/dev/sda
-        Where=/var/lib/docker
-        Type=ext4
     - name: etcd2.service
       command: start
     - name: fleet.service
