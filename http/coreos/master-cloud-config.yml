@@ -20,8 +20,6 @@ coreos:
       content: |
         [Unit]
         Description=Downloads Kubernetes Release
-        After=mnt-kubernetes.mount
-        Requires=mnt-kubernetes.mount
         [Service]
         Type=oneshot
         RemainAfterExit=yes
