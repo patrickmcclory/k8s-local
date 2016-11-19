@@ -4,3 +4,4 @@ http/keys/*.cnf
 http/keys/*.csr
 http/keys/*.pem
 http/keys/*.srl
+secrets.yml
