@@ -5,3 +5,8 @@ http/keys/*.csr
 http/keys/*.pem
 http/keys/*.srl
 secrets.yml
+tftpboot/coreos
+http/keys/*.pem
+http/keys/*.csr
+http/keys/*.cnf
+http/keys/*.srl

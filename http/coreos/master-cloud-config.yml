@@ -14,6 +14,13 @@ coreos:
     reboot-strategy: off
   fleet:
     metadata: kubernetes_role=master
+    public_ip: 172.16.16.10
+    etcd_servers: http://172.16.16.10:2379
+  flannel:
+    etcd_endpoints: http://172.16.16.10:2379
+    ip_masq: true
+    interface: 172.16.16.10
+    public_ip: 172.16.16.10
   units:
     - name: download-release.service
       command: start
@@ -24,7 +31,7 @@ coreos:
         Type=oneshot
         RemainAfterExit=yes
         ExecStart=/usr/bin/mkdir -p /opt/bin
-        ExecStart="/usr/bin/curl http://172.16.16.3/k8s/1.4.5/kubernetes-server-linux-amd64.tar.gz | /usr/bin/tar xvz -C /opt/"
+        ExecStart="/usr/bin/curl http://172.16.16.3/k8s/v1.4.5/kubernetes-server-linux-amd64.tar.gz | /usr/bin/tar xvz -C /opt/"
     - name: copy-serviceaccount-key.service
       command: start
       content: |
@@ -43,3 +50,82 @@ coreos:
       command: start
     - name: fleet.service
       command: start
+    - name: configure-network-etcd2.service
+      command: start
+      content: |
+        [Unit]
+        Description=Sets etcd values for coreos and flannel networking
+        After=etcd2.service
+        Requires=etcd2.service
+        [Service]
+        Type=oneshot
+        RemaiAfterExit=yes
+        ExecStart=/usr/bin/curl -X PUT -d "value={\"Network\":\"10.2.0.0/16\",\"Backend\":{\"Type\":\"vxlan\"}}" "http://172.16.16.10:2379/v2/keys/coreos.com/network/config"
+    - name: flanneld.service
+      command: start
+      drop-ins:
+        - name: 40-configure-network-etcd2
+          content: |
+            [Unit]
+            Requires=configure-network-etcd2.service
+            After=configure-network-etcd2.service
+    - name: docker.service
+      command: start
+      drop-ins:
+        - name: 40-flannel-and-var-lib-docker
+          content: |
+            [Unit]
+            Requires=flanneld.service
+            Requires=var-lib-docker.mount
+            After=flanneld.service
+            After=var-lib-docker.mount
+    - name: format-ephemeral.service
+      command: start
+      content: |
+        [Unit]
+        Description=Formats the ephemeral drive
+        After=dev-sda.device
+        Requires=dev-sda.device
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/sbin/wipefs -a /dev/sda
+        ExecStart=/usr/sbin/mkfs.ext4 -F /dev/sda
+    - name: var-lib-docker.mount
+      command: start
+      content: |
+        [Unit]
+        Description=Mount ephemeral to /var/lib/docker
+        Requires=format-ephemeral.service
+        After=format-ephemeral.service
+        [Mount]
+        What=/dev/sda
+        Where=/var/lib/docker
+        Type=ext4
+    - name: kubelet.service
+      command: start
+      content: |
+        [Service]
+        ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
+        ExecStartPre=/usr/bin/mkdir -p /var/log/containers
+
+        Environment=KUBELET_VERSION=v1.4.3_coreos.0
+        Environment="RKT_OPTS=--volume var-log,kind=host,source=/var/log \
+          --mount volume=var-log,target=/var/log \
+          --volume dns,kind=host,source=/etc/resolv.conf \
+          --mount volume=dns,target=/etc/resolv.conf"
+
+        ExecStartPre=/usr/bin/wget http://172.16.16.3/coreos/master/kube-apiserver.yaml -O /etc/kubernetes/manifests/kube-apiserver.yaml
+
+        ExecStart=/usr/lib/coreos/kubelet-wrapper \
+          --api-servers=http://127.0.0.1:8080 \
+          --register-schedulable=false \
+          --allow-privileged=true \
+          --config=/etc/kubernetes/manifests \
+          --hostname-override=172.16.16.10 \
+          --cluster-dns=10.3.0.10 \
+          --cluster-domain=cluster.local
+        Restart=always
+        RestartSec=10
+        [Install]
+        WantedBy=multi-user.target
