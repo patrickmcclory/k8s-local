@@ -1,7 +1,5 @@
 #!/bin/bash
-export RSYNC_PASSWORD='P@ssword!'
-
-rsync -uav --chmod=+r --rsh="/usr/bin/sshpass -p 'P@ssword!' ssh -o StrictHostKeyChecking=no -l pmdev" --exclude='.git' . 172.16.16.3:/opt/k8s-local
+rsync -uav --chmod=+r --exclude='.git' . 172.16.16.3:/opt/k8s-local
 
 dl-client 1 off
 dl-client 2 off

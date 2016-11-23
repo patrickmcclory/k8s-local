@@ -25,6 +25,15 @@ write_files:
         user:
           client-certificate: /etc/kubernetes/ssl/worker.pem
           client-key: /etc/kubernetes/ssl/worker-key.pem
+  - path: /opt/bin/waiter.sh
+    permissions: 0755
+    owner: root
+    content: |
+      #! /usr/bin/bash
+      echo 'Waiting for http service for kubernetes binaries'
+      until $(curl --output /dev/null --silent --head --fail http://172.16.16.3/k8s/v1.4.5/kubernetes-server-linux-amd64.tar.gz); do  printf '.'; sleep 5; done
+      echo ''
+      echo 'Done waiting for http service for kubernetes binaries'
 coreos:
   etcd2:
     name: dev-02
@@ -57,6 +66,7 @@ coreos:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
+        ExecStartPre=/usr/bin/bash /opt/bin/waiter.sh
         ExecStart=/usr/bin/mkdir -p /opt/bin
         ExecStart=/usr/bin/wget -q http://172.16.16.3/k8s/v1.4.5/kubernetes-server-linux-amd64.tar.gz -O /tmp/kubernetes.tar.gz
         ExecStart=/usr/bin/tar xvf /tmp/kubernetes.tar.gz -C /opt/
@@ -141,6 +151,7 @@ coreos:
 
         ExecStartPre=/usr/bin/wget http://172.16.16.3/coreos/minions/kube-proxy.yaml -O /etc/kubernetes/manifests/kube-proxy.yaml
         ExecStartPre=/usr/bin/wget http://172.16.16.3/coreos/minions/worker-kubeconfig.yaml -O /etc/kubernetes/worker-kubeconfig.yaml
+        ExecStartPre=/usr/bin/chmod +r /etc/kubernetes/worker-kubeconfig.yaml
 
         Environment=KUBELET_VERSION=v1.4.5_coreos.0
         Environment="RKT_OPTS=--volume var-log,kind=host,source=/var/log \
