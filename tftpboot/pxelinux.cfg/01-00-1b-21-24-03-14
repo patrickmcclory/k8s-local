@@ -1,0 +1,9 @@
+default coreos
+prompt 1
+timeout 15
+
+label coreos
+  MENU DEFAULT LABEL Install CoreOS
+  KERNEL /coreos/beta/coreos_production_pxe.vmlinuz
+  INITRD /coreos/beta/coreos_production_pxe_image.cpio.gz
+  APPEND cloud-config-url=http://172.16.16.3/coreos/dev-02-cloud-config.yml

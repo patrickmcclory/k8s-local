@@ -13,3 +13,10 @@ SERVICE_IP_RANGE=10.3.0.0/24
 K8S_SERVICE_IP=10.3.0.1
 DNS_SERVICE_IP=10.3.0.10
 ```
+
+## Other Notes
+
+Power IDs:
+
+* dev-01: 6
+* dev-01: 1
