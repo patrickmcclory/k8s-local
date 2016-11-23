@@ -1,6 +1,30 @@
 #cloud-config
 ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDvaKhzN7tqXdATJqpCqtk0T77ResjteJFldyerpTNJg3BBiYLrSki0rJJN50pIDTclciEWXRsUKBVrXu7b0NW+oP2LsQsQ0jodtvuxk/HQLUhVOVrf46E//oXI+66mg/Nkw0ZcGmZodXAZ73ec3YwJxBnMupBnu2gDVpIQtMRYZs49IVaQfPatzvhk2dwPIvNGoz+F+Bys3swdlc//sXpI+rYf03TsGoTQFb1AXyLx9Sn56ap4I5DHT5lkeegTJOMPA/E8VOo2eOHla95iY9gejG/v4BZgWyVRNOUw+JRgwGfLxuHVoouW3wQnXhI4MhuV3iluSyujPU2TubIYQSTR patrick@pmdev-mac
+write_files:
+  - path: /home/core/.kube/config
+    owner: core
+    permissions: 0600
+    content: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority: /etc/kubernetes/ssl/ca.pem
+          server: https://172.16.16.10
+        name: default-cluster
+      contexts:
+      - context:
+          cluster: default-cluster
+          user: default-admin
+        name: default-system
+      current-context: default-system
+      kind: Config
+      preferences: {}
+      users:
+      - name: default-admin
+        user:
+          client-certificate: /etc/kubernetes/ssl/worker.pem
+          client-key: /etc/kubernetes/ssl/worker-key.pem
 coreos:
   etcd2:
     name: dev-06
@@ -28,8 +52,8 @@ coreos:
         ExecStart=/usr/bin/wget -q http://172.16.16.3/k8s/v1.4.5/kubernetes-server-linux-amd64.tar.gz -O /tmp/kubernetes.tar.gz
         ExecStart=/usr/bin/tar xvf /tmp/kubernetes.tar.gz -C /opt/
         ExecStart=/usr/bin/rm -rf /tmp/kubernetes.tar.gz
-        ExecStart=/usr/bin/mv /opt/kubernetes/srv/bin/kubectl /usr/bin/kubectl
-        ExecStart=/usr/bin/chmod +x /usr/bin/kubectl
+        ExecStart=/usr/bin/mv /opt/kubernetes/server/bin/kubectl /usr/bin/kubectl
+        ExecStart=/usr/bin/chmod +rx /usr/bin/kubectl
     - name: copy-serviceaccount-key.service
       command: start
       content: |
@@ -42,8 +66,8 @@ coreos:
         ExecStart=/usr/bin/wget http://172.16.16.3/keys/ca.pem -P /etc/kubernetes/ssl/
         ExecStart=/usr/bin/wget http://172.16.16.3/keys/dev-06.lab.mcclory.io-worker.pem -O /etc/kubernetes/ssl/worker.pem
         ExecStart=/usr/bin/wget http://172.16.16.3/keys/dev-06.lab.mcclory.io-worker-key.pem -O /etc/kubernetes/ssl/worker-key.pem
-        ExecStart=/usr/bin/chmod 700 /etc/kubernetes/ssl/worker-key.pem
         ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/worker-key.pem
+        ExecStart=/usr/bin/chmod +r /etc/kubernetes/ssl/worker-key.pem
         RemainAfterExit=yes
         Type=oneshot
     - name: fleet.service
