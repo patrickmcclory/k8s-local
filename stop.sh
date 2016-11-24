@@ -1,4 +1,7 @@
 #!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source ${DIR}/variables.sh
+
 echo '*******************************************************************************'
 echo 'Running k8s-local shutdown routine'
 echo '*******************************************************************************'
@@ -15,13 +18,9 @@ echo ''
 #|     7     |    dev-06    |
 #|     8     |    pxeboot   |
 
-dl-client 1 off
-dl-client 2 off
-dl-client 3 off
-dl-client 4 off
-dl-client 5 off
-dl-client 6 off
-dl-client 7 off
+for client_power_id in "${ALL_POWER_IDS[@]}"; do
+  dl-client $client_power_id off
+done
 
 echo ''
 echo '*******************************************************************************'

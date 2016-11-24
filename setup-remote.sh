@@ -3,6 +3,7 @@
 # Variables set per https://coreos.com/kubernetes/docs/latest/openssl.html
 
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source ${DIR}/variables.sh
 
 echo ""
 echo "Set up dnsmasq and configure for use"
@@ -59,4 +60,4 @@ sudo ln -s /etc/nginx/sites-available/pxeboot.conf /etc/nginx/sites-enabled/pxeb
 sudo service nginx restart
 
 sudo mkdir -p /opt/k8s-local
-sudo chown ubuntu:ubuntu /opt/k8s-local
+sudo chown $REMOTE_MACHINE_USER:$REMOTE_MACHINE_USER /opt/k8s-local

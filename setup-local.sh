@@ -1,12 +1,7 @@
 #!/bin/bash
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 
-MASTER_HOST=172.16.16.10
-K8S_SERVICE_IP=10.3.0.1
-CLUSTER_DOMAIN_NAME=lab.mcclory.io
-NUMBER_OF_HOSTS=7
-
-REMOTE_MACHINE_USER=pmdev
+source ${DIR}/variables.sh
 
 echo ''
 echo 'Getting CoreOS files for alpha, beta and stable releases... just in case'
@@ -140,11 +135,12 @@ echo "Generating Admin Key"
 sudo openssl genrsa -out admin-key.pem 2048
 sudo openssl req -new -key admin-key.pem -out admin.csr -subj "/CN=kube-admin"
 sudo openssl x509 -req -in admin.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin.pem -days 10000
+echo "Done generating Admin Key"
+echo ""
+
 
 sudo chmod 600 $DIR/http/keys/*
 
-cd $DIR
-
 echo "Set up folder(s) on remote machine"
 
-ssh $REMOTE_MACHINE_USER@172.16.16.3 "sudo mkdir -p /opt/k8s-local && sudo chown -R $REMOTE_MACHINE_USER:$REMOTE_MACHINE_USER /opt/k8s-local"
+ssh $REMOTE_MACHINE_USER@$PXEBOOT_IP "sudo mkdir -p /opt/k8s-local && sudo chown -R $REMOTE_MACHINE_USER:$REMOTE_MACHINE_USER /opt/k8s-local"

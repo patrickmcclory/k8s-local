@@ -1,4 +1,6 @@
 #!/bin/bash
+DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+source ${DIR}/variables.sh
 
 echo '*******************************************************************************'
 echo 'Running k8s-local startup routine'
@@ -16,7 +18,7 @@ echo ''
 #|     8     |    pxeboot   |
 
 # turn on the master node
-dl-client 6 on
+dl-client $MASTER_NODE_POWER_ID on
 
 # delay the start of the other nodes
 echo '**** Delay starting minions for 120 sec'
@@ -26,12 +28,9 @@ echo ''
 sleep 120
 echo '**** Turning Minions on now!'
 
-dl-client 1 on
-dl-client 2 on
-dl-client 3 on
-dl-client 4 on
-dl-client 5 on
-dl-client 7 on
+for client_power_id in "${MINION_NODE_POWER_IDS[@]}"; do
+  dl-client $client_power_id on
+done
 
 echo '**** Done turning on the minions!'
 echo ''
