@@ -86,6 +86,8 @@ coreos:
         ExecStart=/usr/bin/chmod +r /etc/kubernetes/ssl/worker-key.pem
         ExecStart=/usr/bin/chmod 700 /etc/kubernetes/ssl/apiserver-key.pem
         ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/apiserver-key.pem
+        ExecStart=/usr/bin/mkdir -p /home/core/.kube
+        ExecStart=/usr/bin/chown -R core:core /home/core/.kube
         RemainAfterExit=yes
         Type=oneshot
     - name: etcd2.service

@@ -68,6 +68,8 @@ coreos:
         ExecStart=/usr/bin/wget http://172.16.16.3/keys/dev-05.lab.mcclory.io-worker-key.pem -O /etc/kubernetes/ssl/worker-key.pem
         ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/worker-key.pem
         ExecStart=/usr/bin/chmod +r /etc/kubernetes/ssl/worker-key.pem
+        ExecStart=/usr/bin/mkdir -p /home/core/.kube
+        ExecStart=/usr/bin/chown -R core:core /home/core/.kube
         RemainAfterExit=yes
         Type=oneshot
     - name: fleet.service

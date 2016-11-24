@@ -1,28 +1,25 @@
 #!/bin/bash
 rsync -uav --chmod=+r --exclude='.git' . 172.16.16.3:/opt/k8s-local
 
-dl-client 1 off
-dl-client 2 off
-dl-client 3 off
-dl-client 4 off
-dl-client 5 off
-dl-client 6 off
-dl-client 7 off
+echo 'Restarting dnsmasq and nginx just in case we have changed configs.'
+/usr/bin/ssh pmdev@172.16.16.3 'sudo service dnsmasq restart'
+/usr/bin/ssh pmdev@172.16.16.3 'sudo service nginx restart'
+echo 'Done restarting dnsmasq and nginx.'
 
-# dev-01 - master
-#dl-client 6 off
-dl-client 6 on
+my_dir="$(dirname "$0")"
+"$my_dir/stop.sh"
 
-# dev-02 - minion
-# dl-client 1 ccl
+#| outlet id | machine name |
+#|-----------|--------------|
+#|     1     |    dev-02    |
+#|     2     |    dev-03    |
+#|     3     |    dev-05    |
+#|     4     |    dev-07    |
+#|     5     |    dev-04    |
+#|     6     |    dev-01    |
+#|     7     |    dev-06    |
+#|     8     |    pxeboot   |
 
-# dev-05 - minion
-# dl-client 3 ccl
-
-# dev-06 - minion
-# dl-client 7 ccl
-
-# dev-07 - minion
-# dl-client 4 ccl
+"$my_dir/start.sh" &
 
 ssh pmdev@172.16.16.3 'sudo tail -f /var/log/syslog /var/log/nginx/access.log'

@@ -6,6 +6,8 @@ K8S_SERVICE_IP=10.3.0.1
 CLUSTER_DOMAIN_NAME=lab.mcclory.io
 NUMBER_OF_HOSTS=7
 
+REMOTE_MACHINE_USER=pmdev
+
 echo ''
 echo 'Getting CoreOS files for alpha, beta and stable releases... just in case'
 echo ''
@@ -133,10 +135,16 @@ echo ""
 done
 echo "--------------------------------------------------------------------------------"
 
+echo ""
+echo "Generating Admin Key"
+sudo openssl genrsa -out admin-key.pem 2048
+sudo openssl req -new -key admin-key.pem -out admin.csr -subj "/CN=kube-admin"
+sudo openssl x509 -req -in admin.csr -CA ca.pem -CAkey ca-key.pem -CAcreateserial -out admin.pem -days 10000
+
 sudo chmod 600 $DIR/http/keys/*
 
-cd $DIRs
+cd $DIR
 
-echo "Set up folders on Raspberry Pi"
+echo "Set up folder(s) on remote machine"
 
-ssh ubuntu@172.16.16.3 'sudo mkdir -p /opt/k8s-local && sudo chown -R ubuntu:ubuntu /opt/k8s-local'
+ssh $REMOTE_MACHINE_USER@172.16.16.3 "sudo mkdir -p /opt/k8s-local && sudo chown -R $REMOTE_MACHINE_USER:$REMOTE_MACHINE_USER /opt/k8s-local"
