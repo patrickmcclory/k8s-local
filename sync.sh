@@ -2,11 +2,11 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 source ${DIR}/variables.sh
 
-rsync -uav --chmod=+r --exclude='.git' . $REMOTE_MACHINE_USER@$REMOTE_MACHINE_ADDRESS:/opt/k8s-local
+rsync -uav --chmod=+r --exclude='.git' . ${REMOTE_MACHINE_USER}@${REMOTE_MACHINE_ADDRESS}:/opt/k8s-local
 
 echo 'Restarting dnsmasq and nginx just in case we have changed configs.'
-/usr/bin/ssh $REMOTE_MACHINE_USER@$REMOTE_MACHINE_ADDRESS 'sudo service dnsmasq restart'
-/usr/bin/ssh $REMOTE_MACHINE_USER@$REMOTE_MACHINE_ADDRESS 'sudo service nginx restart'
+/usr/bin/ssh ${REMOTE_MACHINE_USER}@${REMOTE_MACHINE_ADDRESS} 'sudo service dnsmasq restart'
+/usr/bin/ssh ${REMOTE_MACHINE_USER}@${REMOTE_MACHINE_ADDRESS} 'sudo service nginx restart'
 echo 'Done restarting dnsmasq and nginx.'
 
 #| outlet id | machine name |
@@ -20,6 +20,6 @@ echo 'Done restarting dnsmasq and nginx.'
 #|     7     |    dev-06    |
 #|     8     |    pxeboot   |
 
-"$DIR/start.sh" &
+"${DIR}/start.sh" &
 
-ssh $REMOTE_MACHINE_USER@$REMOTE_MACHINE_ADDRESS 'sudo tail -f /var/log/syslog /var/log/nginx/access.log'
+ssh ${REMOTE_MACHINE_USER}@${REMOTE_MACHINE_ADDRESS} 'sudo tail -f /var/log/syslog /var/log/nginx/access.log'

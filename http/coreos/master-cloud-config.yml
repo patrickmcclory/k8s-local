@@ -2,7 +2,6 @@
 ssh_authorized_keys:
   - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDvaKhzN7tqXdATJqpCqtk0T77ResjteJFldyerpTNJg3BBiYLrSki0rJJN50pIDTclciEWXRsUKBVrXu7b0NW+oP2LsQsQ0jodtvuxk/HQLUhVOVrf46E//oXI+66mg/Nkw0ZcGmZodXAZ73ec3YwJxBnMupBnu2gDVpIQtMRYZs49IVaQfPatzvhk2dwPIvNGoz+F+Bys3swdlc//sXpI+rYf03TsGoTQFb1AXyLx9Sn56ap4I5DHT5lkeegTJOMPA/E8VOo2eOHla95iY9gejG/v4BZgWyVRNOUw+JRgwGfLxuHVoouW3wQnXhI4MhuV3iluSyujPU2TubIYQSTR patrick@pmdev-mac
 write_files:
-write_files:
   - path: /home/core/.kube/config
     owner: core
     permissions: 0600
@@ -60,7 +59,7 @@ coreos:
       command: start
       content: |
         [Unit]
-        Description=Downloads Kubernetes Release
+        Description=Downloads the kubernetes files required by the local machine and puts the requisite files somewhere within the normal session PATH
         [Service]
         Type=oneshot
         RemainAfterExit=yes
@@ -74,7 +73,7 @@ coreos:
       command: start
       content: |
         [Unit]
-        Description=Gather k8s keys
+        Description=Gathers the pregenerated openssl keys that were generated on the pxeboot machine for use in securing communications
         [Service]
         ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
         ExecStart=/usr/bin/wget http://172.16.16.3/keys/ca.pem -P /etc/kubernetes/ssl/
@@ -98,7 +97,7 @@ coreos:
       command: start
       content: |
         [Unit]
-        Description=Sets etcd values for coreos and flannel networking
+        Description=Sets etcd values for flannel networking to assume the right backend network CIDR and type
         After=etcd2.service
         Requires=etcd2.service
         [Service]
@@ -111,6 +110,7 @@ coreos:
         - name: 40-configure-network-etcd2
           content: |
             [Unit]
+            Description=Delays flanneld from starting until we've set the appropriate values within the configure-network-etcd2.service oneshot unit
             Requires=configure-network-etcd2.service
             After=configure-network-etcd2.service
     - name: docker.service
@@ -119,6 +119,7 @@ coreos:
         - name: 40-flannel-and-var-lib-docker
           content: |
             [Unit]
+            Description= Delays the start of the docker daemon until flanneld is started and we've set up the mount for var-lib-docker.mount
             Requires=flanneld.service
             Requires=var-lib-docker.mount
             After=flanneld.service
@@ -127,7 +128,7 @@ coreos:
       command: start
       content: |
         [Unit]
-        Description=Formats the ephemeral drive
+        Description=Formats the local drive for use as an ephemeral drive
         After=dev-sda.device
         Requires=dev-sda.device
         [Service]
@@ -141,7 +142,7 @@ coreos:
       command: start
       content: |
         [Unit]
-        Description=Mount ephemeral to /media/ephemeral
+        Description=Mounts the ephemeral drive created in format-ephemeral.service to /media/ephemeral
         Requires=format-ephemeral.service
         After=format-ephemeral.service
         [Mount]
@@ -153,7 +154,7 @@ coreos:
       content: |
         [Unit]
         Requires=format-ephemeral.service
-        Description=Mount ephemeral as /var/lib/docker
+        Description=Connects the ephemeral drive mounted to /media/ephemeral to the default location where docker stores images. Forces docker to stop while it's running so that it actually uses it vs. corrupting the logical disk.
         [Service]
         Type=oneshot
         ExecStartPre=/usr/bin/systemctl stop docker
@@ -165,6 +166,10 @@ coreos:
     - name: kubelet.service
       command: start
       content: |
+        [Unit]
+        Description=Kubernetes manager that will run the manifests located at /etc/kubernetes/manifests
+        After=docker-storage.service flanneld.service
+        Requires=docker-storage.service flanneld.service
         [Service]
         ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
         ExecStartPre=/usr/bin/mkdir -p /var/log/containers

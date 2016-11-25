@@ -19,7 +19,7 @@ echo ''
 #|     8     |    pxeboot   |
 
 for client_power_id in "${ALL_POWER_IDS[@]}"; do
-  dl-client $client_power_id off
+  dl-client ${client_power_id} off
 done
 
 echo ''

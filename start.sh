@@ -18,7 +18,7 @@ echo ''
 #|     8     |    pxeboot   |
 
 # turn on the master node
-dl-client $MASTER_NODE_POWER_ID on
+dl-client ${MASTER_NODE_POWER_ID} on
 
 # delay the start of the other nodes
 echo '**** Delay starting minions for 120 sec'
@@ -29,7 +29,7 @@ sleep 120
 echo '**** Turning Minions on now!'
 
 for client_power_id in "${MINION_NODE_POWER_IDS[@]}"; do
-  dl-client $client_power_id on
+  dl-client ${client_power_id} on
 done
 
 echo '**** Done turning on the minions!'

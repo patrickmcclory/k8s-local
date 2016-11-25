@@ -8,10 +8,10 @@ echo 'Getting CoreOS files for alpha, beta and stable releases... just in case'
 echo ''
 
 for releasename in alpha beta stable; do
-  echo "    Downloading $releasename files"
-  sudo mkdir -p $DIR/tftpboot/coreos/$releasename
-  sudo curl https://$releasename.release.core-os.net/amd64-usr/current/coreos_production_pxe.vmlinuz -o $DIR/tftpboot/coreos/$releasename/coreos_production_pxe.vmlinuz
-  sudo curl https://$releasename.release.core-os.net/amd64-usr/current/coreos_production_pxe_image.cpio.gz -o $DIR/tftpboot/coreos/$releasename/coreos_production_pxe_image.cpio.gz
+  echo "    Downloading ${releasename} files"
+  sudo mkdir -p ${DIR}/tftpboot/coreos/${releasename}
+  sudo curl https://${releasename}.release.core-os.net/amd64-usr/current/coreos_production_pxe.vmlinuz -o ${DIR}/tftpboot/coreos/${releasename}/coreos_production_pxe.vmlinuz
+  sudo curl https://${releasename}.release.core-os.net/amd64-usr/current/coreos_production_pxe_image.cpio.gz -o ${DIR}/tftpboot/coreos/${releasename}/coreos_production_pxe_image.cpio.gz
 done
 
 sudo chmod -R 755 /var/lib/tftpboot/*
@@ -25,34 +25,29 @@ echo ''
 
 filelist=("gpxelinux.0" "ldlinux.c32" "lpxelinux.0" "memdisk" "menu.c32" "pxelinux.0")
 for filename in "${filelist[@]}"; do
-  sudo rm -rf tftpboot/$filename
-  sudo curl http://www.mcclory.io/resources/pxeboot/$filename -o $DIR/tftpboot/$filename
+  sudo rm -rf tftpboot/${filename}
+  sudo curl http://www.mcclory.io/resources/pxeboot/${filename} -o ${DIR}/tftpboot/${filename}
 done
 
 echo ""
-echo "Downloading k8s"
+echo "Downloading k8s binaries for kubectl"
 
 version_ids=('v1.4.6' 'v1.4.5' 'v1.4.3')
 for version_id in "${version_ids[@]}"; do
   # Download k8s files
-  echo "  Getting version $version_id archive"
-  sudo mkdir -p $DIR/http/k8s/$version_id
-  wget https://github.com/kubernetes/kubernetes/releases/download/$version_id/kubernetes.tar.gz -O /tmp/kuberntes.tar.gz
-  cd /tmp
-  tar xvf /tmp/kuberntes.tar.gz
-  sudo mv /tmp/kubernetes/server/kubernetes-server-linux-amd64.tar.gz $DIR/http/k8s/$version_id/
-  sudo rm -rf /tmp/kubernetes
-  sudo rm -rf /tmp/kubernetes.tar.gz
+  echo "  Getting kubectl for version ${version_id}"
+  sudo mkdir -p ${DIR}/http/k8s/${version_id}
+  sudo wget https://storage.googleapis.com/kubernetes-release/release/${version_id}/bin/linux/amd64/kubectl -O ${DIR}/http/k8s/${version_id}/kubectl
 done
 
 echo ""
-echo "Done Downloading k8s"
+echo "Done Downloading k8s kubectl binaries"
 echo ""
 
 # Create us some keys!
 # Basically following steps here: https://coreos.com/kubernetes/docs/latest/openssl.html
 
-cd $DIR/http/keys
+cd ${DIR}/http/keys
 
 echo ""
 echo "Creating Clicster Root CA"
@@ -107,16 +102,16 @@ IP.1 = \$ENV::WORKER_IP
 
 EOF
 
-for (( i=1; i<=$NUMBER_OF_HOSTS; i++ ))
+for (( i=1; i<=${NUMBER_OF_HOSTS}; i++ ))
 do
 
 FMT_DIGIT=$(printf "%02d" $i)
 
-WORKER_FQDN=dev-${FMT_DIGIT}.$CLUSTER_DOMAIN_NAME
+WORKER_FQDN=dev-${FMT_DIGIT}.${CLUSTER_DOMAIN_NAME}
 WORKER_IP=172.16.16.${i}0
 
-echo "FQDN: "$WORKER_FQDN
-echo "IP:   "$WORKER_IP
+echo "FQDN: "${WORKER_FQDN}
+echo "IP:   "${WORKER_IP}
 echo ""
 
 sudo openssl genrsa -out ${WORKER_FQDN}-worker-key.pem 2048
@@ -139,8 +134,8 @@ echo "Done generating Admin Key"
 echo ""
 
 
-sudo chmod 600 $DIR/http/keys/*
+sudo chmod 600 ${DIR}/http/keys/*
 
 echo "Set up folder(s) on remote machine"
 
-ssh $REMOTE_MACHINE_USER@$PXEBOOT_IP "sudo mkdir -p /opt/k8s-local && sudo chown -R $REMOTE_MACHINE_USER:$REMOTE_MACHINE_USER /opt/k8s-local"
+ssh ${REMOTE_MACHINE_USER}@${PXEBOOT_IP} "sudo mkdir -p /opt/k8s-local && sudo chown -R ${REMOTE_MACHINE_USER}:${REMOTE_MACHINE_USER} /opt/k8s-local"

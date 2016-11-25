@@ -16,7 +16,13 @@ DNS_SERVICE_IP=10.3.0.10
 
 ## Other Notes
 
-Power IDs:
-
-* dev-01: 6
-* dev-01: 1
+| outlet id | machine name |
+|-----------|--------------|
+|     1     |    dev-02    |
+|     2     |    dev-03    |
+|     3     |    dev-05    |
+|     4     |    dev-07    |
+|     5     |    dev-04    |
+|     6     |    dev-01    |
+|     7     |    dev-06    |
+|     8     |    pxeboot   |

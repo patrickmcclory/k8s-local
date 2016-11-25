@@ -16,7 +16,7 @@ else
   echo "  DNSMASQ is already installed."
 fi
 
-sudo sed -i "/DNSMASQ_OPTS=/c\DNSMASQ_OPTS=--conf-file=$DIR\/dnsmasq\/dnsmasq.conf" /etc/default/dnsmasq
+sudo sed -i "/DNSMASQ_OPTS=/c\DNSMASQ_OPTS=--conf-file=${DIR}\/dnsmasq\/dnsmasq.conf" /etc/default/dnsmasq
 
 echo "  DNSMASQ reconfigured"
 
@@ -46,7 +46,7 @@ cat >> /tmp/pxeboot.conf << EOF
 server {
 	listen 80 default_server;
 	listen [::]:80 default_server;
-  root $DIR/http;
+  root ${DIR}/http;
   server_name _;
   location / {
     try_files \$uri \$uri/ =404;
@@ -60,4 +60,4 @@ sudo ln -s /etc/nginx/sites-available/pxeboot.conf /etc/nginx/sites-enabled/pxeb
 sudo service nginx restart
 
 sudo mkdir -p /opt/k8s-local
-sudo chown $REMOTE_MACHINE_USER:$REMOTE_MACHINE_USER /opt/k8s-local
+sudo chown ${REMOTE_MACHINE_USER}:${REMOTE_MACHINE_USER} /opt/k8s-local
