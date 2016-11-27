@@ -16,13 +16,13 @@ DNS_SERVICE_IP=10.3.0.10
 
 ## Other Notes
 
-| outlet id | machine name |
-|-----------|--------------|
-|     1     |    dev-02    |
-|     2     |    dev-03    |
-|     3     |    dev-05    |
-|     4     |    dev-07    |
-|     5     |    dev-04    |
-|     6     |    dev-01    |
-|     7     |    dev-06    |
-|     8     |    pxeboot   |
+| outlet id | machine name | hardware base | memory | # nics | notes |
+|-----------|--------------|---------------|--------|--------|-------|
+|     1     |    dev-02    | Custom AMD-based | 16 GiB | 2 | |
+|     2     |    dev-03    | Custom AMD-based | 16 GiB | 2 | |
+|     3     |    dev-05    | Dell Optiplex 790 - Core i7| 32 GiB | 3 | |
+|     4     |    dev-07    | Dell Optiplex 790 - Core i7| 32 GiB | 3 | |
+|     5     |    dev-04    | Custom AMD-based | 16 GiB | 2 | I replaced the CMOS battery on this one. Haven't done that in a long time! |
+|     6     |    dev-01    | Dell Optiplex 790 - Core i7| 8 GiB | 3 | Similar spec to other Dell's but less memory. |
+|     7     |    dev-06    | Dell Optiplex 790 - Core i7| 32 GiB | 3 | |
+|     8     |    pxeboot   | Chromebox-M004U | 4 GiB | 1 | This replaced the Raspberry Pi 3... rest in peace fruity ARM-based provider of computing power! |
