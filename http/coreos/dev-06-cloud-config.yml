@@ -1,0 +1,159 @@
+#cloud-config
+ssh_authorized_keys:
+  - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDvaKhzN7tqXdATJqpCqtk0T77ResjteJFldyerpTNJg3BBiYLrSki0rJJN50pIDTclciEWXRsUKBVrXu7b0NW+oP2LsQsQ0jodtvuxk/HQLUhVOVrf46E//oXI+66mg/Nkw0ZcGmZodXAZ73ec3YwJxBnMupBnu2gDVpIQtMRYZs49IVaQfPatzvhk2dwPIvNGoz+F+Bys3swdlc//sXpI+rYf03TsGoTQFb1AXyLx9Sn56ap4I5DHT5lkeegTJOMPA/E8VOo2eOHla95iY9gejG/v4BZgWyVRNOUw+JRgwGfLxuHVoouW3wQnXhI4MhuV3iluSyujPU2TubIYQSTR patrick@pmdev-mac
+write_files:
+  - path: /home/core/.kube/config
+    owner: core
+    permissions: 0600
+    content: |
+      apiVersion: v1
+      clusters:
+      - cluster:
+          certificate-authority: /etc/kubernetes/ssl/ca.pem
+          server: https://172.16.16.10
+        name: default-cluster
+      contexts:
+      - context:
+          cluster: default-cluster
+          user: default-admin
+        name: default-system
+      current-context: default-system
+      kind: Config
+      preferences: {}
+      users:
+      - name: default-admin
+        user:
+          client-certificate: /etc/kubernetes/ssl/worker.pem
+          client-key: /etc/kubernetes/ssl/worker-key.pem
+coreos:
+  etcd2:
+    name: dev-06
+  update:
+    reboot-strategy: off
+  fleet:
+    metadata: kubernetes_role=minion
+    public_ip: 172.16.16.60
+    etcd_servers: http://172.16.16.10:2379
+  flannel:
+    etcd_endpoints: http://172.16.16.10:2379
+    ip_masq: true
+    interface: 172.16.16.60
+    public_ip: 172.16.16.60
+  units:
+    - name: download-release.service
+      command: start
+      content: |
+        [Unit]
+        Description=Downloads Kubernetes Release
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStart=/usr/bin/mkdir -p /opt/bin
+        ExecStart=/usr/bin/wget -q http://172.16.16.3/k8s/v1.4.5/kubernetes-server-linux-amd64.tar.gz -O /tmp/kubernetes.tar.gz
+        ExecStart=/usr/bin/tar xvf /tmp/kubernetes.tar.gz -C /opt/
+        ExecStart=/usr/bin/rm -rf /tmp/kubernetes.tar.gz
+        ExecStart=/usr/bin/mv /opt/kubernetes/server/bin/kubectl /opt/bin/kubectl
+        ExecStart=/usr/bin/chmod +rx /opt/bin/kubectl
+    - name: copy-serviceaccount-key.service
+      command: start
+      content: |
+        [Unit]
+        Description=Gather k8s keys and set up kubectl
+        Requires=download-release.service
+        After=download-release.service
+        [Service]
+        ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
+        ExecStart=/usr/bin/wget http://172.16.16.3/keys/ca.pem -P /etc/kubernetes/ssl/
+        ExecStart=/usr/bin/wget http://172.16.16.3/keys/dev-06.lab.mcclory.io-worker.pem -O /etc/kubernetes/ssl/worker.pem
+        ExecStart=/usr/bin/wget http://172.16.16.3/keys/dev-06.lab.mcclory.io-worker-key.pem -O /etc/kubernetes/ssl/worker-key.pem
+        ExecStart=/usr/bin/chown root:root /etc/kubernetes/ssl/worker-key.pem
+        ExecStart=/usr/bin/chmod +r /etc/kubernetes/ssl/worker-key.pem
+        ExecStart=/usr/bin/mkdir -p /home/core/.kube
+        ExecStart=/usr/bin/chown -R core:core /home/core/.kube
+        RemainAfterExit=yes
+        Type=oneshot
+    - name: fleet.service
+      command: start
+    - name: flanneld.service
+      command: start
+    - name: docker.service
+      command: start
+      drop-ins:
+        - name: 40-flannel-and-var-lib-docker
+          content: |
+            [Unit]
+            Requires=flanneld.service
+            Requires=var-lib-docker.mount
+            After=flanneld.service
+            After=var-lib-docker.mount
+    - name: format-ephemeral.service
+      command: start
+      content: |
+        [Unit]
+        Description=Formats the ephemeral drive
+        After=dev-sda.device
+        Requires=dev-sda.device
+        [Service]
+        Type=oneshot
+        RemainAfterExit=yes
+        ExecStartPre=/usr/bin/mkdir -p /media/ephemeral
+        ExecStart=/usr/sbin/wipefs -a /dev/sda
+        ExecStartPost=/usr/sbin/mkfs.btrfs -f /dev/sda
+        ExecStartPost=/usr/bin/mount -t btrfs /dev/sda /media/ephemeral
+    - name: media-ephemeral.mount
+      command: start
+      content: |
+        [Unit]
+        Description=Mount ephemeral to /media/ephemeral
+        Requires=format-ephemeral.service
+        After=format-ephemeral.service
+        [Mount]
+        What=/dev/sda
+        Where=/media/ephemeral
+        Type=btrfs
+    - name: docker-storage.service
+      command: start
+      content: |
+        [Unit]
+        Requires=format-ephemeral.service
+        Description=Mount ephemeral as /var/lib/docker
+        [Service]
+        Type=oneshot
+        ExecStartPre=/usr/bin/systemctl stop docker
+        ExecStartPre=/usr/bin/rm -rf /var/lib/docker/*
+        ExecStart=/usr/bin/mkdir -p /media/ephemeral/docker
+        ExecStart=/usr/bin/mkdir -p /var/lib/docker
+        ExecStartPost=/usr/bin/mount -o bind /media/ephemeral/docker /var/lib/docker
+        ExecStartPost=/usr/bin/systemctl start --no-block docker
+    - name: kubelet.service
+      command: start
+      content: |
+        [Service]
+        ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/manifests
+        ExecStartPre=/usr/bin/mkdir -p /var/log/containers
+
+        ExecStartPre=/usr/bin/wget http://172.16.16.3/coreos/minions/kube-proxy.yaml -O /etc/kubernetes/manifests/kube-proxy.yaml
+        ExecStartPre=/usr/bin/wget http://172.16.16.3/coreos/minions/worker-kubeconfig.yaml -O /etc/kubernetes/worker-kubeconfig.yaml
+
+        Environment=KUBELET_VERSION=v1.4.5_coreos.0
+        Environment="RKT_OPTS=--volume var-log,kind=host,source=/var/log \
+          --mount volume=var-log,target=/var/log \
+          --volume dns,kind=host,source=/etc/resolv.conf \
+          --mount volume=dns,target=/etc/resolv.conf"
+
+        ExecStart=/usr/lib/coreos/kubelet-wrapper \
+          --api-servers=https://172.16.16.10 \
+          --register-node=true \
+          --allow-privileged=true \
+          --config=/etc/kubernetes/manifests \
+          --hostname-override=172.16.16.60 \
+          --cluster-dns=10.3.0.10 \
+          --cluster-domain=cluster.local \
+          --kubeconfig=/etc/kubernetes/worker-kubeconfig.yaml \
+          --tls-cert-file=/etc/kubernetes/ssl/worker.pem \
+          --tls-private-key-file=/etc/kubernetes/ssl/worker-key.pem
+
+        Restart=always
+        RestartSec=10
+        [Install]
+        WantedBy=multi-user.target
