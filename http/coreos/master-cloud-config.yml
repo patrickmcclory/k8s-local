@@ -64,10 +64,7 @@ coreos:
         Type=oneshot
         RemainAfterExit=yes
         ExecStart=/usr/bin/mkdir -p /opt/bin
-        ExecStart=/usr/bin/wget -q http://172.16.16.3/k8s/v1.4.5/kubernetes-server-linux-amd64.tar.gz -O /tmp/kubernetes.tar.gz
-        ExecStart=/usr/bin/tar xvf /tmp/kubernetes.tar.gz -C /opt/
-        ExecStart=/usr/bin/rm -rf /tmp/kubernetes.tar.gz
-        ExecStart=/usr/bin/mv /opt/kubernetes/server/bin/kubectl /opt/bin/kubectl
+        ExecStart=/usr/bin/wget -q http://172.16.16.3/k8s/v1.4.5/kubectl -O /opt/bin/kubectl
         ExecStart=/usr/bin/chmod +rx /opt/bin/kubectl
     - name: copy-serviceaccount-key.service
       command: start
