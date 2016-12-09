@@ -153,7 +153,7 @@ coreos:
         ExecStartPre=/usr/bin/wget http://172.16.16.3/coreos/minions/worker-kubeconfig.yaml -O /etc/kubernetes/worker-kubeconfig.yaml
         ExecStartPre=/usr/bin/chmod +r /etc/kubernetes/worker-kubeconfig.yaml
 
-        Environment=KUBELET_VERSION=v1.4.5_coreos.0
+        Environment=KUBELET_VERSION=v1.4.6_coreos.0
         Environment="RKT_OPTS=--volume var-log,kind=host,source=/var/log \
           --mount volume=var-log,target=/var/log \
           --volume dns,kind=host,source=/etc/resolv.conf \
