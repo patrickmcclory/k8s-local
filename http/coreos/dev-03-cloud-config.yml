@@ -25,13 +25,13 @@ write_files:
         user:
           client-certificate: /etc/kubernetes/ssl/worker.pem
           client-key: /etc/kubernetes/ssl/worker-key.pem
-  - path: /opt/bin/waiter.sh
+  - path: /opt/bin/dl-waiter.sh
     permissions: 0755
     owner: root
     content: |
       #! /usr/bin/bash
       echo 'Waiting for http service for kubernetes binaries'
-      until $(curl --output /dev/null --silent --head --fail http://172.16.16.3/k8s/v1.4.5/kubernetes-server-linux-amd64.tar.gz); do  printf '.'; sleep 5; done
+      until $(curl --output /dev/null --silent --head --fail http://172.16.16.3/k8s/v1.4.5/kubectl); do  printf '.'; sleep 5; done
       echo ''
       echo 'Done waiting for http service for kubernetes binaries'
 coreos:
@@ -66,6 +66,7 @@ coreos:
         [Service]
         Type=oneshot
         RemainAfterExit=yes
+        ExecStartPre=/usr/bin/bash /opt/bin/dl-waiter.sh
         ExecStart=/usr/bin/mkdir -p /opt/bin
         ExecStart=/usr/bin/wget -q http://172.16.16.3/k8s/v1.4.5/kubectl -O /opt/bin/kubectl
         ExecStart=/usr/bin/chmod +rx /opt/bin/kubectl
@@ -77,6 +78,7 @@ coreos:
         Requires=download-release.service
         After=download-release.service
         [Service]
+        ExecStartPre=/usr/bin/bash /opt/bin/dl-waiter.sh
         ExecStartPre=/usr/bin/mkdir -p /etc/kubernetes/ssl
         ExecStart=/usr/bin/wget http://172.16.16.3/keys/ca.pem -P /etc/kubernetes/ssl/
         ExecStart=/usr/bin/wget http://172.16.16.3/keys/dev-03.lab.mcclory.io-worker.pem -O /etc/kubernetes/ssl/worker.pem
