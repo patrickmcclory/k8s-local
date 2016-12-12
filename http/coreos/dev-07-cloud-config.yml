@@ -133,6 +133,18 @@ coreos:
         ExecStart=/usr/bin/mkdir -p /var/lib/docker
         ExecStartPost=/usr/bin/mount -o bind /media/ephemeral/docker /var/lib/docker
         ExecStartPost=/usr/bin/systemctl start --no-block docker
+    - name: node-exporter.service
+      command: start
+      content: |
+        [Unit]
+        Description=Sets up the prometheus node-exporter
+        After=media-ephemeral.mount
+        [Service]
+        ExecStartPre=/usr/bin/wget http://172.16.16.3/node_exporter -O /opt/bin/node-exporter
+        ExecStartPre=/usr/bin/chmod +x /opt/bin/node-exporter
+        ExecStart=/opt/bin/node-exporter  -collectors.enabled "conntrack,diskstats,entropy,filefd,filesystem,hwmon,loadavg,mdadm,meminfo,netdev,netstat,sockstat,stat,textfile,time,uname,vmstat,bonding,ntp,systemd,logind" -collector.ntp.server 172.16.16.1
+        Restart=always
+        RestartSec=10
     - name: kubelet.service
       command: start
       content: |

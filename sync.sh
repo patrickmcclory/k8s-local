@@ -20,6 +20,15 @@ echo 'Done restarting dnsmasq and nginx.'
 #|     7     |    dev-06    |
 #|     8     |    pxeboot   |
 
-"${DIR}/start.sh" &
 
-ssh ${REMOTE_MACHINE_USER}@${REMOTE_MACHINE_ADDRESS} 'sudo tail -f /var/log/syslog /var/log/nginx/access.log'
+bash "${DIR}/start.sh"
+
+echo 'Waiting for Kubernetes to become available';
+sleep 60
+
+while (( $(kubectl get nodes | wc -l) < 4 )); do
+  '... still waiting'
+  sleep 10;
+done;
+
+echo 'Kubectl get nodes now responds with multiple nodes!'

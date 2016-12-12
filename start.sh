@@ -21,19 +21,21 @@ echo ''
 dl-client ${MASTER_NODE_POWER_ID} on
 
 # delay the start of the other nodes
-echo '**** Delay starting minions for 120 sec'
+echo '**** Delay starting minions for 60 sec'
 echo ''
 echo ''
 echo ''
-sleep 120
+sleep 60
 echo '**** Turning Minions on now!'
 
 for client_power_id in "${MINION_NODE_POWER_IDS[@]}"; do
   dl-client ${client_power_id} on
-done
+  done
 
 echo '**** Done turning on the minions!'
 echo ''
 echo '*******************************************************************************'
 echo 'k8s-local start sequence complete'
 echo '*******************************************************************************'
+
+exit 0
